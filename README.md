@@ -3,7 +3,7 @@
 ## Compatibility
 Python 3.6 only. Type-hints and F-strings
 
-### How to setup
+## How to setup
 
 ### 0. Clone the repo
 
