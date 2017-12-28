@@ -15,6 +15,7 @@ class User(AuthUser):
 
 
 class Company(models.Model):
+    id = models.AutoField(primary_key=True)
     creator = models.ForeignKey('User')
     trade_name = models.CharField(max_length=255)
     verified = models.BooleanField(default=False)
@@ -22,6 +23,7 @@ class Company(models.Model):
 
 
 class Account(models.Model):
+    id = models.AutoField(primary_key=True)
     creator = models.ForeignKey('User')
     company = models.ForeignKey('Company')
     tracking_uuid = models.UUIDField(unique=True, default=uuid.uuid4)
@@ -31,6 +33,7 @@ class Account(models.Model):
 
 
 class Revenue(models.Model):
+    id = models.AutoField(primary_key=True)
     account = models.ForeignKey('Account')
     feature = models.CharField(max_length=20, choices=FEE_FEATURE_CHOICES)
     timestamp_paid = models.DateTimeField()
