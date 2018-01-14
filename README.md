@@ -11,7 +11,7 @@ Python 3.6 only. Type-hints and F-strings
 ```pip install -r requirements.txt```
 
 ### 2. Start the database for tests
-```docker run --net=host --name some-postgres -e POSTGRES_PASSWORD=secret -d postgres:latest```
+```docker run --net=host --name some-postgres -e POSTGRES_PASSWORD=secret -d postgres:10```
 
 ### 3. Create the initial schema and populate the db with sample data
 ```
