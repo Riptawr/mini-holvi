@@ -38,8 +38,20 @@ class TestWrapperPostgres(TestCase):
         self.assertEqual(["notify_id_trigger"], trigger_name)
 
     def test_apply_trigger_for_table(self):
+        test_query = ("SELECT DISTINCT trigger_name, event_object_table\n"
+                      "  FROM information_schema.triggers\n"
+                      " WHERE trigger_schema NOT IN\n"
+                      "       ('pg_catalog', 'information_schema');")
+
         d = DSN(database="IntegrationTestDB")
         table = "core_revenue"
         res = apply_trigger_for_table(dsn=d, t=table)
         self.assertTrue(res, msg="Pseudocheck failed, ResultProxy was None")
-        self.assertRaises(KnownException, apply_trigger_for_table, dsn=d, t=table)
+
+        triggers_on_tables = get_engine(d).execute(test_query).fetchall()
+        self.assertIn(table, [row[1] for row in triggers_on_tables], msg=f"could not find any trigger on {table}")
+        self.assertNotIn("auth_user", [row[1] for row in triggers_on_tables], msg="found triggers on tables we didn't "
+                                                                                  "modify")
+
+        self.assertRaises(KnownException, apply_trigger_for_table, dsn=d, t=table, msg="writing trigger twice should "
+                                                                                       "not work")
