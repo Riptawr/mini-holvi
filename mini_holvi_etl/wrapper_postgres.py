@@ -56,7 +56,7 @@ def get_engine(dsn: DSN) -> sqlalchemy.engine:
     return create_engine(f"postgresql://{dsn.user}:{dsn.password}@{dsn.host}:{dsn.port}/{dsn.database}")
 
 
-def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Union[Exception, ResultProxy]:
+def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Union[KnownException, ResultProxy]:
     with expect_errors(ProgrammingError, OperationalError):
         initial_engine = get_engine(dsn)
         con = initial_engine.connect()
@@ -65,8 +65,7 @@ def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Uni
         if drop_if_exists:
             con.execute(f"DROP DATABASE IF EXISTS {target_db}")
             con.execute("commit")
-            res = con.execute(f"CREATE DATABASE {target_db}")
-            return res
+            return con.execute(f"CREATE DATABASE {target_db}")
 
         return con.execute(f"CREATE DATABASE {target_db}")
 
@@ -88,14 +87,14 @@ def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[Exception, Re
         return con.execute(notify_trigger)
 
 
-def apply_trigger_for_table(dsn: DSN, t: str) -> None:
+def apply_trigger_for_table(dsn: DSN, t: str) -> [KnownException, ResultProxy]:
     with expect_errors(ProgrammingError, OperationalError):
         conn = get_engine(dsn).execution_options(autocommit=True).connect()
         return conn.execute(f"CREATE TRIGGER data_modified AFTER insert or update on {t} for each row execute "
                             f"procedure notify_id_trigger();")
 
 
-def subscribe_to_events(dsn: DSN, channel: str = "test") -> None:
+def subscribe_to_events(dsn: DSN, channel: str = "test") -> [KnownException, None]:
     """ Leverages PostgreSQL Listen and Notify commands to generate events """
 
     with expect_errors(ProgrammingError, OperationalError):
