@@ -3,6 +3,14 @@
 ## Compatibility
 Python 3.6 only. Type-hints and F-strings
 
+## ETL Architecture outline
+
+1. Changes (Insert/Update) on the source DB (PostgreSQL) are monitored by triggers
+2. Changes (Insert/Update) result in Events that send the table's PK as Event ID
+3. The ETL service uses Event ID for synchronization between source and target
+4. Target fact tables ignore deletes, are append only, 
+de-normalized and partitioned by event timestamps for easier querying
+
 ## How to setup
 
 ### 0. Clone the repo
