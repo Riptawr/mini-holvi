@@ -3,6 +3,13 @@ from wrapper_postgres import *
 
 
 class TestWrapperPostgres(TestCase):
+    """
+    TODO: ResultProxy returned by sqlalchemy and similar ORM does not implement a general "check for success" function
+    The tests are full of self.assert(res, msg="Pseudocheck failed, ResultProxy was None")
+     which exploits a side-effect of failing ResultProxy objects
+     being `None` as a surrogate for proper checks in all cases that i've tested (i.e. incompleteness)
+    """
+
     def test_get_engine(self):
         d = DSN()
         con = get_engine(d)
@@ -24,7 +31,7 @@ class TestWrapperPostgres(TestCase):
         d = DSN()
 
         res = create_event_notify_func(d, channel_name="integrationtest")
-        self.assertTrue(res)
+        self.assertTrue(res, msg="Pseudocheck failed, ResultProxy was None")
 
         triggers_in_schema = get_engine(d).execute(test_query).fetchall()
         trigger_name = [row[0] for row in triggers_in_schema if "notify_id_trigger" in row[0]]
@@ -34,5 +41,5 @@ class TestWrapperPostgres(TestCase):
         d = DSN(database="IntegrationTestDB")
         table = "core_revenue"
         res = apply_trigger_for_table(dsn=d, t=table)
-        self.assertTrue(res)
-        self.assertRaises(Exception, apply_trigger_for_table, dsn=d, t=table)
+        self.assertTrue(res, msg="Pseudocheck failed, ResultProxy was None")
+        self.assertRaises(KnownException, apply_trigger_for_table, dsn=d, t=table)
