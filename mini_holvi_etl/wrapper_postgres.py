@@ -56,6 +56,11 @@ def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[Exception, Re
     return res
 
 
+def apply_trigger_for_table(dsn: DSN, t: str) -> None:
+    conn = get_engine(dsn).execution_options(autocommit=True).connect()
+    conn.execute(f"CREATE TRIGGER data_modified AFTER insert or update on ${t} for each row execute procedure notify_id_trigger();")
+
+
 def subscribe_to_events(dsn: DSN, channel: str = "test") -> None:
     """ Leverages PostgreSQL Listen and Notify commands to generate events """
 
