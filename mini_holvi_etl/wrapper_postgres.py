@@ -70,7 +70,7 @@ def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Uni
         return con.execute(f"CREATE DATABASE {target_db}")
 
 
-def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[Exception, ResultProxy]:
+def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[KnownException, ResultProxy]:
     # TODO: exception + drop cascade if exists may be more transparent than replace
     notify_trigger = DDL(
         "CREATE OR REPLACE FUNCTION notify_id_trigger() RETURNS trigger AS $$\n"
