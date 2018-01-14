@@ -7,6 +7,7 @@ from funcy import contextmanager
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.engine.result import ResultProxy
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.pool import NullPool
 from sqlalchemy.schema import DDL
 
 
@@ -52,8 +53,10 @@ class DSN(NamedTuple):
 
 
 def get_engine(dsn: DSN) -> sqlalchemy.engine:
-    """This creates lazy engine objects and should be thread-safe"""
-    return create_engine(f"postgresql://{dsn.user}:{dsn.password}@{dsn.host}:{dsn.port}/{dsn.database}")
+    """ This creates lazy engine objects and should be thread-safe
+        NullPool is used since we aim for ETL and don't need persistent open connections
+    """
+    return create_engine(f"postgresql://{dsn.user}:{dsn.password}@{dsn.host}:{dsn.port}/{dsn.database}", poolclass=NullPool)
 
 
 def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Union[KnownException, ResultProxy]:
@@ -68,6 +71,11 @@ def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Uni
             return con.execute(f"CREATE DATABASE {target_db}")
 
         return con.execute(f"CREATE DATABASE {target_db}")
+
+
+def create_table(dsn: DSN, sql_inline: str) -> Union[Exception, ResultProxy]:
+    with expect_errors(ProgrammingError, OperationalError):
+        return get_engine(dsn).connect().execute(DDL(sql_inline))
 
 
 def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[KnownException, ResultProxy]:

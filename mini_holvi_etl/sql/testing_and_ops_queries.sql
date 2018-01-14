@@ -9,3 +9,10 @@ SELECT DISTINCT trigger_name, event_object_table
   FROM information_schema.triggers
  WHERE trigger_schema NOT IN
        ('pg_catalog', 'information_schema');
+
+SELECT EXISTS (
+   SELECT 1
+   FROM   information_schema.tables
+   WHERE  table_schema = 'public'
+   AND    table_name = 'table_name'
+   );
