@@ -59,7 +59,7 @@ def get_engine(dsn: DSN) -> sqlalchemy.engine:
     return create_engine(f"postgresql://{dsn.user}:{dsn.password}@{dsn.host}:{dsn.port}/{dsn.database}", poolclass=NullPool)
 
 
-def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Union[KnownException, ResultProxy]:
+def bootstrap_dwh(dsn: DSN, target_db: str, drop_if_exists: bool = False) -> Union[Exception, ResultProxy]:
     with expect_errors(ProgrammingError, OperationalError):
         initial_engine = get_engine(dsn)
         con = initial_engine.connect()
@@ -78,7 +78,7 @@ def create_table(dsn: DSN, sql_inline: str) -> Union[Exception, ResultProxy]:
         return get_engine(dsn).connect().execute(DDL(sql_inline))
 
 
-def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[KnownException, ResultProxy]:
+def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[Exception, ResultProxy]:
     # TODO: exception + drop cascade if exists may be more transparent than replace
     notify_trigger = DDL(
         "CREATE OR REPLACE FUNCTION notify_id_trigger() RETURNS trigger AS $$\n"
@@ -95,14 +95,14 @@ def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[KnownExceptio
         return con.execute(notify_trigger)
 
 
-def apply_trigger_for_table(dsn: DSN, t: str) -> [KnownException, ResultProxy]:
+def apply_trigger_for_table(dsn: DSN, t: str) -> [Exception, ResultProxy]:
     with expect_errors(ProgrammingError, OperationalError):
         conn = get_engine(dsn).execution_options(autocommit=True).connect()
         return conn.execute(f"CREATE TRIGGER data_modified AFTER insert or update on {t} for each row execute "
                             f"procedure notify_id_trigger();")
 
 
-def subscribe_to_events(dsn: DSN, channel: str = "test") -> [KnownException, None]:
+def subscribe_to_events(dsn: DSN, channel: str = "test") -> [Exception, None]:
     """ Leverages PostgreSQL Listen and Notify commands to generate events """
 
     with expect_errors(ProgrammingError, OperationalError):
