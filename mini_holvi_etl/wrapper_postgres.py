@@ -3,7 +3,7 @@ from datetime import datetime
 
 import select
 import sqlalchemy
-from funcy import contextmanager, decorator
+from funcy import contextmanager
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.engine.result import ResultProxy
 from sqlalchemy.exc import OperationalError, ProgrammingError
