@@ -31,7 +31,7 @@ class TestWrapperPostgres(TestCase):
         self.assertEqual(["notify_id_trigger"], trigger_name)
 
     def test_apply_trigger_for_table(self):
-        d = DSN(database="sourcedb")
+        d = DSN(database="IntegrationTestDB")
         table = "core_revenue"
         res = apply_trigger_for_table(dsn=d, t=table)
         self.assertTrue(res)
