@@ -1,6 +1,7 @@
 from typing import List, Optional, Any
 from uuid import UUID
 
+from funcy import re_find
 from sqlalchemy import Table
 from sqlalchemy.engine import RowProxy
 
@@ -40,7 +41,14 @@ if __name__ == '__main__':
             res = create_table(d_target, locals()[table])
             res.close()
 
-    def domain_query_retrieve(dsn: DSN, start_id, table_name) -> Optional[List[RowProxy]]:
+    def domain_query_retrieve(dsn: DSN, table_name: str, start_id="1") -> Optional[List[RowProxy]]:
+        """
+
+        :param table_name:
+        :param dsn:
+        :param start_id: a unique ID for the row (ideally, PK), id of 1 means full table refresh
+        :return:
+        """
         core_user = ("SELECT tracking_uuid, mobile_verified, email_verified, identity_verified, invited, country\n"
                      f"FROM core_user cu LEFT JOIN auth_user a ON cu.user_ptr_id = a.id AND a.id >= {start_id};")
 
@@ -70,8 +78,9 @@ if __name__ == '__main__':
                         f"FROM core_revenue AS cr LEFT JOIN core_account a ON cr.account_id = a.id AND cr.id >= {start_id};")
 
         scoped_queries = [o for o in locals() if o.startswith("core_")]
+
         if table_name not in scoped_queries:
-            print(f"{datetime.utcnow()} Warning: Please specify one of the available source tables: {scoped_queries}")
+            print(f"{datetime.utcnow()} Warning: Source table not available for ETL. Available are: {scoped_queries}")
             return None
 
         return get_engine(dsn).connect().execute(locals().get(table_name)).fetchall()
@@ -93,25 +102,23 @@ if __name__ == '__main__':
                         fixed.append(v)
                 conn.execute(table.insert(fixed))
 
+    def retrieve_and_etl(event: str) -> None:
+        target_table = re_find('"table" : "(.+?)"', event)
+        print(f"{datetime.utcnow()} sourcing data from table: {target_table}")
+        items = domain_query_retrieve(DSN(database="sourcedb"), start_id="1", table_name=target_table)
+        if items:
+            domain_query_insert(items, DSN(database="targetdb"), table_name=target_table.replace("core", "facts"))
 
-    def subscribe_print_events(channel_name: str, dsn: DSN=DSN()) -> None:
+    def listen_and_etl(channel_name: str, dsn: DSN=DSN()) -> None:
         """ This will block """
-        subscribe_to_events(dsn, channel_name)
+        subscribe_to_events_and_dispatch(retrieve_and_etl, dsn, channel_name)
 
     source_list = ["core_user", "core_account", "core_revenue", "core_company"]
     try:
         bootstrap_source(source_list, dsn=DSN(database="sourcedb"))
-    except KnownException:
-        pass
+        bootstrap_target(DSN())
+    except KnownException as ke:
+        print(f"{datetime.utcnow()} Warning: skipped errors {ke}")
 
-    try:
-        bootstrap_target(DSN(database="targetdb"))
-    except KnownException:
-        pass
-
-    subscribe_print_events("test", DSN(database="sourcedb"))
-
-    # items = domain_query_retrieve(DSN(database="sourcedb"), start_id="1", table_name="core_account")
-    # if items:
-    #     domain_query_insert(items, DSN(database="targetdb"), table_name="facts_account")
+    listen_and_etl(channel_name="test", dsn=DSN(database="sourcedb"))
 
