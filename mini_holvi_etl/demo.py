@@ -58,7 +58,7 @@ if __name__ == '__main__':
                         " verified,\n"
                         " domicile\n"
                         "FROM core_company AS company\n"
-                        f"LEFT JOIN core_user u ON company.creator_id = u.user_ptr_id AND company.id >= {start_id});")
+                        f"LEFT JOIN core_user u ON company.creator_id = u.user_ptr_id AND company.id >= {start_id};")
 
         core_account = ("SELECT ca.creator_id as creator, ca.company_id as company,\n"
                         " ca.tracking_uuid,\n"
