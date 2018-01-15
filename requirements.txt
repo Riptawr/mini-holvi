@@ -4,3 +4,4 @@ pytz==2017.3
 sqlalchemy
 coverage
 funcy
+psycopg2
