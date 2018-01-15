@@ -1,9 +1,10 @@
-from typing import NamedTuple, Union
+from typing import NamedTuple, Union, Callable
 from datetime import datetime
 
 import select
 import sqlalchemy
 from funcy import contextmanager
+from multiprocessing import Process
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.engine.result import ResultProxy
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -80,13 +81,29 @@ def create_table(dsn: DSN, sql_inline: str) -> Union[Exception, ResultProxy]:
 
 def create_event_notify_func(dsn: DSN, channel_name: str) -> Union[Exception, ResultProxy]:
     # TODO: exception + drop cascade if exists may be more transparent than replace
-    notify_trigger = DDL(
-        "CREATE OR REPLACE FUNCTION notify_id_trigger() RETURNS trigger AS $$\n"
-        "BEGIN\n"
-        f"  PERFORM pg_notify('{channel_name}'::text, row_to_json(NEW)::text);\n"
-        "  RETURN new;\n"
-        "END;\n"
-        "$$ LANGUAGE plpgsql;").execute_if(dialect="postgresql")
+    notify_trigger = DDL("CREATE OR REPLACE FUNCTION notify_id_trigger() RETURNS TRIGGER AS $$\n"
+                      "    DECLARE \n"
+                      "        data json;\n"
+                      "        notification json;\n"
+                      "    BEGIN\n"
+                      "        IF (TG_OP = 'DELETE') THEN\n"
+                      "            data = row_to_json(OLD);\n"
+                      "        ELSE\n"
+                      "            data = row_to_json(NEW);\n"
+                      "        END IF;\n"
+                      "        \n"
+                      "        notification = json_build_object(\n"
+                      "                          'table',TG_TABLE_NAME,\n"
+                      "                          'action', TG_OP,\n"
+                      "                          'data', data);\n"
+                      "        \n"
+                      "                        \n"
+                      f"        PERFORM pg_notify('{channel_name}',notification::text);\n"
+                      "        \n"
+                      "        RETURN NULL; \n"
+                      "    END;\n"
+                      "    \n"
+                      "$$ LANGUAGE plpgsql;")
 
     with expect_errors(ProgrammingError, OperationalError):
         con = get_engine(dsn)
@@ -102,19 +119,23 @@ def apply_trigger_for_table(dsn: DSN, t: str) -> [Exception, ResultProxy]:
                             f"procedure notify_id_trigger();")
 
 
-def subscribe_to_events(dsn: DSN, channel: str = "test") -> [Exception, None]:
+def subscribe_to_events_and_dispatch(f: Callable[[str], None], dsn: DSN, channel: str = "test") -> [Exception, None]:
     """ Leverages PostgreSQL Listen and Notify commands to generate events """
 
     with expect_errors(ProgrammingError, OperationalError):
+
         engine = get_engine(dsn).execution_options(autocommit=True)
         conn = engine.connect()
         conn.execute(f"LISTEN {channel};")
         print(f"{datetime.utcnow()} Waiting for notifications on channels {channel}")
         while True:
             if select.select([conn.connection], [], [], 5) == ([], [], []):
-                print(f"{datetime.utcnow()} Nothing new")
+                pass
             else:
                 conn.connection.poll()
                 while conn.connection.notifies:
                     notify = conn.connection.notifies.pop()
-                    print(f"{datetime.utcnow()} Got NOTIFY: {notify.pid}, {notify.channel}, {notify.payload}")
+                    print(notify.payload)
+                    p = Process(target=f, args=(notify.payload,))
+                    p.start()
+                    p.join()
