@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import List, Any, Type
 from uuid import UUID
 
 from funcy import re_find
@@ -6,6 +6,8 @@ from sqlalchemy import Table
 from sqlalchemy.engine import RowProxy
 
 from wrapper_postgres import *
+import model
+from model import *
 
 if __name__ == '__main__':
 
@@ -41,49 +43,16 @@ if __name__ == '__main__':
             res = create_table(d_target, locals()[table])
             res.close()
 
-    def domain_query_retrieve(dsn: DSN, table_name: str, start_id="1") -> Optional[List[RowProxy]]:
-        """
+    def get_etl_query_for(table: str) -> Union[AssertionError, Type[EtlQuery]]:
+        available_queries = model.EtlQuery.__subclasses__()
+        for t in available_queries:
+            if t.__name__ == table:
+                return t
 
-        :param table_name:
-        :param dsn:
-        :param start_id: a unique ID for the row (ideally, PK), id of 1 means full table refresh
-        :return:
-        """
-        core_user = ("SELECT tracking_uuid, mobile_verified, email_verified, identity_verified, invited, country\n"
-                     f"FROM core_user cu LEFT JOIN auth_user a ON cu.user_ptr_id = a.id AND a.id >= {start_id};")
+        raise AssertionError(f"No ETL available for table {table}")
 
-        core_company = ("SELECT creator_id AS creator,\n"
-                        " u.tracking_uuid AS creator_tracking_uuid,\n"
-                        " trade_name,\n"
-                        " verified,\n"
-                        " domicile\n"
-                        "FROM core_company AS company\n"
-                        f"LEFT JOIN core_user u ON company.creator_id = u.user_ptr_id AND company.id >= {start_id};")
-
-        core_account = ("SELECT ca.creator_id as creator, ca.company_id as company,\n"
-                        " ca.tracking_uuid,\n"
-                        " u.tracking_uuid as creator_tracking_uuid,\n"
-                        " ca.handle, ca.archived, ca.domicile\n"
-                        "FROM core_account ca\n"
-                        f"LEFT JOIN core_user u ON ca.creator_id = u.user_ptr_id AND ca.id >= {start_id};")
-
-        core_revenue = ("  SELECT\n"
-                        "    cr.account_id AS account,\n"
-                        "    a.company_id AS company,\n"
-                        "    cr.feature,\n"
-                        "    cr.timestamp_paid AS timestamp_paid,\n"
-                        "    cr.amount,\n"
-                        "    a.domicile AS account_domicile,\n"
-                        "    a.tracking_uuid AS account_tracking_uuid\n"
-                        f"FROM core_revenue AS cr LEFT JOIN core_account a ON cr.account_id = a.id AND cr.id >= {start_id};")
-
-        scoped_queries = [o for o in locals() if o.startswith("core_")]
-
-        if table_name not in scoped_queries:
-            print(f"{datetime.utcnow()} Warning: Source table not available for ETL. Available are: {scoped_queries}")
-            return None
-
-        return get_engine(dsn).connect().execute(locals().get(table_name)).fetchall()
+    def domain_query_retrieve(dsn: DSN, etl_query: EtlQuery) -> Optional[List[RowProxy]]:
+        return get_engine(dsn).connect().execute(etl_query.dml()).fetchall()
 
 
     def domain_query_insert(items: List[sqlalchemy.engine.result.RowProxy], dsn: DSN, table_name) -> None:
@@ -104,10 +73,15 @@ if __name__ == '__main__':
 
     def retrieve_and_etl(event: str) -> None:
         target_table = re_find('"table" : "(.+?)"', event)
-        print(f"{datetime.utcnow()} sourcing data from table: {target_table}")
-        items = domain_query_retrieve(DSN(database="sourcedb"), start_id="1", table_name=target_table)
-        if items:
-            domain_query_insert(items, DSN(database="targetdb"), table_name=target_table.replace("core", "facts"))
+        try:
+            query = get_etl_query_for(target_table)
+            print(f"{datetime.utcnow()} parsed table name from event {target_table}. Will retrieve via {query}")
+            items = domain_query_retrieve(DSN(database="sourcedb"), query())
+            if items:
+                domain_query_insert(items, DSN(database="targetdb"), table_name=target_table.replace("core", "facts"))
+
+        except AssertionError as ae:
+            print(ae)
 
     def listen_and_etl(channel_name: str, dsn: DSN=DSN()) -> None:
         """ This will block """
