@@ -5,3 +5,4 @@ sqlalchemy
 coverage
 funcy
 psycopg2
+docker==2.6.1

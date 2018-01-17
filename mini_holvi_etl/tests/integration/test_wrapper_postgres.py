@@ -1,11 +1,9 @@
-from unittest import TestCase
-
 import time
-from sqlalchemy import create_engine
 from wrapper_postgres import *
+from tests.integration import EmbeddedPostgresTestcase
 
 
-class TestWrapperPostgres(TestCase):
+class TestWrapperPostgres(EmbeddedPostgresTestcase):
     """
     TODO: ResultProxy returned by sqlalchemy and similar ORM does not implement a general "check for success" function
     The tests are full of self.assert(res, msg="Pseudocheck failed, ResultProxy was None")
@@ -24,20 +22,10 @@ class TestWrapperPostgres(TestCase):
         self.test_table_nonexistent = "test_does_not_exist"
 
     def setUp(self):
-        # """ We assume sqlalchemy is tested elsewhere """
-        # engine = create_engine(f"postgresql://{self.initial_dsn.user}:{self.initial_dsn.password}@{self.initial_dsn.host}:{self.initial_dsn.port}/{self.initial_dsn.database}")
-        # con = engine.connect()
-        # con.execute("commit")
-        # con.execute(self.db_creation_query)
-        # con.close()
         pass
 
     def tearDown(self):
-        engine = create_engine(f"postgresql://{self.initial_dsn.user}:{self.initial_dsn.password}@{self.initial_dsn.host}:{self.initial_dsn.port}/{self.initial_dsn.database}")
-        con = engine.connect()
-        con.execute("commit")
-        con.execute(f"DROP DATABASE {self.targetDB};")
-        con.close()
+        pass
 
     def test_monolithic_wrapper(self):
 
