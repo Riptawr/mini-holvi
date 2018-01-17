@@ -1,7 +1,10 @@
 # mini-holvi
 
 ## Compatibility
-Python 3.6 only. Type-hints and F-strings
+- Python 3.6 only. Type-hints and F-strings
+- Integration tests require docker
+
+Tested on Ubuntu 16.04 LTS.
 
 ## ETL Architecture outline
 
