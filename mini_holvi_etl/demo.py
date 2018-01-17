@@ -51,11 +51,11 @@ if __name__ == '__main__':
 
         raise AssertionError(f"No ETL available for table {table}")
 
-    def domain_query_retrieve(dsn: DSN, etl_query: EtlQuery) -> Optional[List[RowProxy]]:
-        return get_engine(dsn).connect().execute(etl_query.dml()).fetchall()
+    def domain_query_retrieve(dsn: DSN, etl_query: EtlQuery) -> ResultProxy:
+        return get_engine(dsn).connect().execute(etl_query.dml())
 
 
-    def domain_query_insert(items: List[sqlalchemy.engine.result.RowProxy], dsn: DSN, table_name) -> None:
+    def domain_query_insert(items: List[sqlalchemy.engine.result.RowProxy], dsn: DSN, table_name) -> ResultProxy:
         engine = get_engine(dsn)
         metadata = MetaData(engine)
         table = Table(table_name, metadata, autoload=True)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                         fixed.append(v.hex)
                     else:
                         fixed.append(v)
-                conn.execute(table.insert(fixed))
+                return conn.execute(table.insert(fixed))
 
     def retrieve_and_etl(event: str) -> None:
         target_table = re_find('"table" : "(.+?)"', event)
@@ -78,7 +78,9 @@ if __name__ == '__main__':
             print(f"{datetime.utcnow()} parsed table name from event {target_table}. Will retrieve via {query}")
             items = domain_query_retrieve(DSN(database="sourcedb"), query())
             if items:
-                domain_query_insert(items, DSN(database="targetdb"), table_name=target_table.replace("core", "facts"))
+                facts_table_for_insert = target_table.replace("core", "facts")
+                inserts = domain_query_insert(items.fetchall(), DSN(database="targetdb"), table_name=facts_table_for_insert)
+                print(f"{datetime.utcnow()} inserted #{inserts.rowcount} rows into {facts_table_for_insert}")
 
         except AssertionError as ae:
             print(ae)
