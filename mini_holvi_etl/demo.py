@@ -3,7 +3,6 @@ from uuid import UUID
 
 from funcy import re_find
 from sqlalchemy import Table
-from sqlalchemy.engine import RowProxy
 
 from wrapper_postgres import *
 import model
