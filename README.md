@@ -60,9 +60,9 @@ python3.6 manage.py repopulate_test_data
 ```
 
 ### 3. Run the etl demo
-```python mini_holvi_etl/demo.py```
+```python3.6 mini_holvi_etl/demo.py```
 
-From another console: ```python manage.py repopulate_test_data``` 
+From another console: ```python3.6 manage.py repopulate_test_data``` 
 
 ### (Optional) check the contents with your own eyes using pgadmin4 from this trusted source:
 ```
