@@ -34,7 +34,7 @@ coverage report
 In case docker is installed on your machine, the package/build can be simplified to the following:
 ```
 cd deployment/service_etl
-docker build -t mini_holvi_etl .
+docker build -build-arg CACHEBUST=$(date +%s) -t mini_holvi_etl .
 ```
 Now commands are available as following:  
 ```

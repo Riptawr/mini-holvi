@@ -1,7 +1,7 @@
 ## How to build
 
 #### 1. Building the container (from this directory)
-```docker build -t mini_holvi_etl .```
+```docker build -build-arg CACHEBUST=$(date +%s) -t mini_holvi_etl .```
 
 #### 2. Running locally
 To start demo.py:
