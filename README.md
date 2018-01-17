@@ -22,29 +22,49 @@ de-normalized and partitioned by event timestamps `inserted_at` for easier query
 ### 1. Install requirements (create a venv with your favourite tool of choice)
 ```pip install -r requirements.txt```
 
-### 2. Start the database for tests
-```docker run --net=host --name some-postgres -e POSTGRES_PASSWORD=secret -d postgres:10```
-
-### 3. Run the tests
+### 2. Run the tests
+Note: the tests download the official postgres 10 container image
 ```
 cd mini_holvi_etl
 coverage run --source=. -m unittest discover -s tests
 coverage report
 ```
 
-### 4. Create the initial schema and populate the db with sample data
+## Alternative setup (recommended)
+In case docker is installed on your machine, the package/build can be simplified to the following:
 ```
-python manage.py create_database
-python manage.py migrate
-python manage.py repopulate_test_data
+cd deployment/service_etl
+docker build -t mini_holvi_etl .
+```
+Now commands are available as following:  
+```
+docker run --net=host mini_holvi_etl manage.py [ create_database | migrate | repopulate_test_data ]
 ```
 
-### 5. Run the etl demo
+The demo can be run without parameters:  
+```
+docker run --net=host --name=testing-etl  mini_holvi_etl
+```
+
+
+## How to run (manually)
+
+### 1. Start the database for tests
+```docker run --net=host --name some-postgres -e POSTGRES_PASSWORD=secret -d postgres:10```
+
+### 2. Create the initial schema and populate the db with sample data
+```
+python3.6 manage.py create_database
+python3.6 manage.py migrate
+python3.6 manage.py repopulate_test_data
+```
+
+### 3. Run the etl demo
 ```python mini_holvi_etl/demo.py```
 
 From another console: ```python manage.py repopulate_test_data``` 
 
-### 6. (Optional) check the contents with your own eyes using pgadmin4 from this trusted source:
+### (Optional) check the contents with your own eyes using pgadmin4 from this trusted source:
 ```
 docker run --net=host --rm -p 5050:5050 thajeztah/pgadmin4
 ```
